@@ -1,0 +1,123 @@
+import com.google.gson.Gson; // For JSON serialization (add Gson library to your project)
+import java.util.Scanner;
+
+public class SOSGame {
+    private char[][] board;
+    private int size;
+
+    // Constructor to initialize the game board
+    public SOSGame(int size) {
+        this.size = size;
+        this.board = new char[size][size];
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                board[i][j] = ' '; // Empty cell
+            }
+        }
+    }
+
+    // Display the board
+    public void displayBoard() {
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                System.out.print("| " + board[i][j] + " ");
+            }
+            System.out.println("|");
+        }
+    }
+
+    // Check if a move is valid
+    public boolean isValidMove(int row, int col) {
+        return row >= 0 && row < size && col >= 0 && col < size && board[row][col] == ' ';
+    }
+
+    // Make a move
+    public void makeMove(int row, int col, char player) {
+        if (isValidMove(row, col)) {
+            board[row][col] = player;
+        } else {
+            System.out.println("Invalid move. Try again.");
+        }
+    }
+
+    // Serialize the board state to JSON for LLM input
+    public String serializeBoard() {
+        Gson gson = new Gson();
+        return gson.toJson(board);
+    }
+
+    // LLM-based computer opponent
+    public int[] getComputerMove(String apiKey) {
+        try {
+            String serializedBoard = serializeBoard();
+            String prompt = "Given this SOS game board, recommend the optimal move (row, col) for the computer player to maximize score:\n" 
+                            + serializedBoard 
+                            + "\nReturn the move as JSON: {\"row\": int, \"col\": int}.";
+            
+            String response = LLMClient.getResponse(apiKey, prompt);
+            Gson gson = new Gson();
+            Move move = gson.fromJson(response, Move.class);
+            return new int[]{move.row, move.col};
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new int[]{-1, -1}; // Default invalid move
+        }
+    }
+
+    // Main game loop
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        SOSGame game = new SOSGame(3);
+        String apiKey = "your_openai_api_key_here"; // Replace with your OpenAI API key
+
+        System.out.println("Welcome to the SOS Game!");
+        char currentPlayer = 'S';
+        while (true) {
+            game.displayBoard();
+            if (currentPlayer == 'S') {
+                System.out.println("Player's turn (S): Enter row and column (e.g., 1 1): ");
+                int row = scanner.nextInt() - 1;
+                int col = scanner.nextInt() - 1;
+                if (game.isValidMove(row, col)) {
+                    game.makeMove(row, col, currentPlayer);
+                    currentPlayer = 'O'; // Switch player
+                } else {
+                    System.out.println("Invalid move! Try again.");
+                }
+            } else {
+                System.out.println("Computer's turn (O)...");
+                int[] move = game.getComputerMove(apiKey);
+                if (move[0] != -1 && move[1] != -1) {
+                    game.makeMove(move[0], move[1], currentPlayer);
+                    currentPlayer = 'S'; // Switch player
+                } else {
+                    System.out.println("Computer failed to make a move.");
+                }
+            }
+        }
+    }
+
+    // Helper class for JSON deserialization
+    static class Move {
+        int row;
+        int col;
+    }
+}
+
+// LLMClient to interact with OpenAI API
+class LLMClient {
+    public static String getResponse(String apiKey, String prompt) throws Exception {
+        // Use any HTTP library to call the OpenAI API
+        // Example pseudo-code (replace with real HTTP request logic)
+        /*
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(new URI("https://api.openai.com/v1/completions"))
+            .header("Authorization", "Bearer " + apiKey)
+            .POST(HttpRequest.BodyPublishers.ofString("{...}")) // Include the model, prompt, and settings
+            .build();
+        HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+        return response.body();
+        */
+        throw new UnsupportedOperationException("HTTP client implementation required.");
+    }
+}
