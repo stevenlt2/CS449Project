@@ -1,0 +1,35 @@
+import okhttp3.*;
+import org.json.JSONObject;
+
+public class LLMClient {
+    private static final String API_URL = "https://api.openai.com/v1/chat/completions";
+    private static final String API_KEY = "your-api-key";
+
+    public static String getNextMove(String prompt) throws IOException {
+        OkHttpClient client = new OkHttpClient();
+
+        JSONObject requestBody = new JSONObject();
+        requestBody.put("model", "gpt-4");
+        requestBody.put("messages", new JSONObject[] {
+            new JSONObject().put("role", "user").put("content", prompt)
+        });
+
+        Request request = new Request.Builder()
+                .url(API_URL)
+                .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
+                .addHeader("Authorization", "Bearer " + API_KEY)
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                JSONObject jsonResponse = new JSONObject(response.body().string());
+                return jsonResponse.getJSONArray("choices")
+                        .getJSONObject(0)
+                        .getJSONObject("message")
+                        .getString("content");
+            } else {
+                throw new IOException("Error: " + response.message());
+            }
+        }
+    }
+}
